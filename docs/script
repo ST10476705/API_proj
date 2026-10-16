@@ -56,3 +56,23 @@ INSERT INTO RESULTS (ENROLMENTID, CATEGORIESID, FINISHTIME, OVERALLRANK, CATEGOR
     (6, 14, '02:15:30', 42, 15, 'Trail specialist', 'Verified', 1), 
     (7, 2, '03:52:10', 189, 55, 'Solid run', 'Verified', 2), 
     (8, 11, '01:45:33', 112, 35, 'Good effort', 'Verified', 2); 
+ select * from RESULTS;
+
+
+ CREATE TABLE ENROLMENTS ( 
+    ENROLMENTID INT IDENTITY(1,1) PRIMARY KEY, 
+    USERID INT NOT NULL, 
+    CATEGORIESID INT NOT NULL, 
+    RegistrationDate DATETIME DEFAULT GETDATE(), 
+    Status VARCHAR(20) NOT NULL DEFAULT 'Pending', 
+    PaymentStatus VARCHAR(20) NOT NULL DEFAULT 'Unpaid', 
+    BibNumber VARCHAR(20) NULL, 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    UpdatedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (USERID) REFERENCES USERS(USERID) ON DELETE CASCADE, 
+    FOREIGN KEY (CATEGORIESID) REFERENCES CATEGORIES(CATEGORIESID) ON DELETE CASCADE, 
+    CONSTRAINT UQ_ENROLMENTS_UserCategory UNIQUE (USERID, CATEGORIESID), 
+    CONSTRAINT CK_ENROLMENT_Status CHECK (Status IN ('Pending', 'Confirmed', 'Withdrawn', 'Attended', 'DNS', 'DNF')), 
+    CONSTRAINT CK_ENROLMENT_PaymentStatus CHECK (PaymentStatus IN ('Unpaid', 'Paid', 'Refunded')) 
+); 
+
