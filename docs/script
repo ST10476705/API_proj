@@ -140,7 +140,27 @@ CREATE TABLE EVENTS (
     CONSTRAINT CK_EVENT_Date CHECK (EVENTDATE > GETDATE()), 
     CONSTRAINT CK_EVENT_Status CHECK (Status IN ('Draft', 'Published', 'Open', 'Closed', 'Cancelled', 'Completed')) 
 ); 
-USE RaceDayDB_EF;
+
+ALTER TABLE Events ADD Venue NVARCHAR(100) NOT NULL DEFAULT '';
+
+
+ALTER TABLE Events ADD RegistrationFee DECIMAL(10,2) NOT NULL DEFAULT 0.00;
+
+
+
+
+
+
+INSERT INTO EVENTS (EVENTNAME, EVENTDATE, VENUE, LOCATION, DESCRIPTION, USERID, MaxParticipants, RegistrationFee, Status) VALUES  
+    ('Cape Town Marathon', '2026-12-15 06:00:00', 'Green Point Stadium', 'Cape Town, Western Cape', 'Premier marathon event', 1, 5000, 450.00, 'Open'), 
+    ('Johannesburg 10km', '2026-11-20 07:00:00', 'Wanderers Stadium', 'Johannesburg, Gauteng', 'Fast 10km race', 1, 2000, 250.00, 'Open'), 
+    ('Durban Ultra', '2027-01-25 05:00:00', 'Kings Park Stadium', 'Durban, KwaZulu-Natal', 'Ultra endurance race', 2, 500, 750.00, 'Published'), 
+    ('Pretoria Half', '2026-10-10 06:30:00', 'Loftus Versfeld', 'Pretoria, Gauteng','Half marathon', 2, 1500, 350.00, 'Closed'), 
+    ('Garden Route Trail', '2026-12-05 07:00:00', 'George Golf Course', 'George, Western Cape', 'Trail run', 1, 300, 400.00, 'Draft'), 
+    ('Bloemfontein 5km', '2026-12-20 08:00:00', 'Free State Stadium', 'Bloemfontein, Free State', 'Fun run', 2, 800, 150.00, 'Completed'); 
+
+ select * from EVENTS;
+
 
 
 
