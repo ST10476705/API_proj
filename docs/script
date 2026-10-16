@@ -103,6 +103,25 @@ INSERT INTO ENROLMENTS (USERID, CATEGORIESID, Status, PaymentStatus) VALUES
     CONSTRAINT CK_CATEGORY_Distance CHECK (DISTANCE > 0), 
     CONSTRAINT CK_CATEGORY_Gender CHECK (GENDERRESTRICTION IN ('Male', 'Female', 'Any', NULL)) 
 ); 
+INSERT INTO CATEGORIES (EVENTSDID, CATEGORYNAME, DISTANCE, AGEGROUP, GENDERRESTRICTION, PATICIPANTS, MaxParticipants, Fee) VALUES  
+    (1, 'Marathon Elite', 42.195, '18-35', 'Any', 0, 200, 550.00), 
+    (1, 'Marathon Open', 42.195, '36-55', 'Any', 0, 1500, 450.00), 
+    (1, 'Marathon Veteran', 42.195, '56+', 'Any', 0, 500, 450.00), 
+    (1, 'Marathon Women', 42.195, '18+', 'Female', 0, 500, 450.00), 
+    (2, '10km Open', 10.00, '16-40', 'Any', 0, 1000, 250.00), 
+    (2, '10km Veteran', 10.00, '41+', 'Any', 0, 500, 250.00), 
+    (2, '10km Women', 10.00, '16+', 'Female', 0, 300, 250.00), 
+    (3, 'Ultra 50km', 50.00, '20-40', 'Any', 0, 200, 800.00), 
+    (3, 'Ultra 50km Veteran', 50.00, '41+', 'Any', 0, 150, 750.00), 
+    (3, 'Ultra 80km', 80.00, '25-45', 'Any', 0, 100, 950.00), 
+    (4, 'Half Open', 21.10, '18-35', 'Any', 0, 500, 350.00), 
+    (4, 'Half Veteran', 21.10, '36+', 'Any', 0, 500, 350.00), 
+    (5, 'Trail 12km', 12.00, '16+', 'Any', 0, 100, 400.00), 
+    (5, 'Trail 25km', 25.00, '18+', 'Any', 0, 150, 500.00), 
+    (6, '5km Fun Run', 5.00, '6-12', 'Any', 0, 200, 100.00), 
+    (6, '5km Open', 5.00, '13+', 'Any', 0, 400, 150.00); 
+
+select * from CATEGORIES;
 
 
 
