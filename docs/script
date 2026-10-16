@@ -76,3 +76,16 @@ INSERT INTO RESULTS (ENROLMENTID, CATEGORIESID, FINISHTIME, OVERALLRANK, CATEGOR
     CONSTRAINT CK_ENROLMENT_PaymentStatus CHECK (PaymentStatus IN ('Unpaid', 'Paid', 'Refunded')) 
 ); 
 
+INSERT INTO ENROLMENTS (USERID, CATEGORIESID, Status, PaymentStatus) VALUES  
+    (3, 2, 'Confirmed', 'Paid'), 
+    (4, 5, 'Confirmed', 'Paid'), 
+    (5, 3, 'Confirmed', 'Paid'), 
+    (3, 8, 'Confirmed', 'Paid'), 
+    (4, 11, 'Confirmed', 'Paid'), 
+    (6, 14, 'Confirmed', 'Paid'), 
+    (5, 2, 'Confirmed', 'Paid'), 
+    (6, 11, 'Confirmed', 'Paid'); 
+
+    select * from ENROLMENTS;
+
+
