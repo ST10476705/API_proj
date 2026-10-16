@@ -47,3 +47,12 @@ INSERT INTO ASSIGNMENT (USERID, ROLESID) VALUES
     CONSTRAINT UQ_RESULTS_Enrolment UNIQUE (ENROLMENTID), 
     CONSTRAINT CK_RESULT_Status CHECK (Status IN ('Pending', 'Verified', 'Disqualified', 'DNS', 'DNF')) 
 ); 
+INSERT INTO RESULTS (ENROLMENTID, CATEGORIESID, FINISHTIME, OVERALLRANK, CATEGORYRANK, NOTES, Status, VerifiedBy) VALUES  
+    (1, 2, '03:45:22', 156, 42, 'Strong performance', 'Verified', 2), 
+    (2, 5, '00:52:15', 34, 12, 'Personal best', 'Verified', 2), 
+    (3, 3, NULL, NULL, NULL, 'Did not start', 'DNS', NULL), 
+    (4, 8, '04:12:45', 15, 5, 'Excellent performance', 'Verified', 1), 
+    (5, 11, '01:38:22', 87, 28, 'Good race', 'Verified', 2), 
+    (6, 14, '02:15:30', 42, 15, 'Trail specialist', 'Verified', 1), 
+    (7, 2, '03:52:10', 189, 55, 'Solid run', 'Verified', 2), 
+    (8, 11, '01:45:33', 112, 35, 'Good effort', 'Verified', 2); 
