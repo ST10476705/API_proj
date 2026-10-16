@@ -8,3 +8,8 @@ CREATE TABLE ROLES (
     DESCRIPTION VARCHAR(255) NULL, 
     CreatedAt DATETIME DEFAULT GETDATE() 
 ); 
+INSERT INTO ROLES (ROLENAME, DESCRIPTION) VALUES  
+    ('Organiser', 'Can create and manage events, categories, and results'), 
+    ('Participant', 'Can register for events, enrol in categories, and view results'); 
+
+    select * from ROLES;
