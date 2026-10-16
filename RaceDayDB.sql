@@ -1,0 +1,359 @@
+CREATE DATABASE RaceDayDB; 
+ 
+USE RaceDayDB; 
+ 
+CREATE TABLE ROLES ( 
+    ROLESID INT IDENTITY(1,1) PRIMARY KEY, 
+    ROLENAME VARCHAR(50) NOT NULL, 
+    DESCRIPTION VARCHAR(255) NULL, 
+    CreatedAt DATETIME DEFAULT GETDATE() 
+); 
+INSERT INTO ROLES (ROLENAME, DESCRIPTION) VALUES  
+    ('Organiser', 'Can create and manage events, categories, and results'), 
+    ('Participant', 'Can register for events, enrol in categories, and view results'); 
+
+    select * from ROLES;
+
+     
+
+CREATE TABLE ASSIGNMENT ( 
+    ASSIGNMENTID INT IDENTITY(1,1) PRIMARY KEY, 
+    USERID INT NOT NULL, 
+    ROLESID INT NOT NULL, 
+    AssignedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (USERID) REFERENCES USERS(USERID) ON DELETE CASCADE, 
+    FOREIGN KEY (ROLESID) REFERENCES ROLES(ROLESID) ON DELETE CASCADE, 
+    CONSTRAINT UQ_ASSIGNMENT_UserRole UNIQUE (USERID, ROLESID) 
+); 
+
+INSERT INTO ASSIGNMENT (USERID, ROLESID) VALUES  
+    (1, 1), (2, 1), (3, 2), (4, 2), (5, 2), (6, 2); 
+    
+
+    select * from ASSIGNMENT;
+
+    CREATE TABLE RESULTS ( 
+    RESULTSID INT IDENTITY(1,1) PRIMARY KEY, 
+    ENROLMENTID INT NOT NULL, 
+    CATEGORIESID INT NOT NULL, 
+    FINISHTIME TIME NULL, 
+    OVERALLRANK INT NULL, 
+    CATEGORYRANK INT NULL, 
+    NOTES VARCHAR(255) NULL, 
+    Status VARCHAR(20) NOT NULL DEFAULT 'Pending', 
+    VerifiedBy INT NULL, 
+    VerifiedAt DATETIME NULL, 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    UpdatedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (ENROLMENTID) REFERENCES ENROLMENTS(ENROLMENTID) ON DELETE CASCADE, 
+    FOREIGN KEY (CATEGORIESID) REFERENCES CATEGORIES(CATEGORIESID), 
+    FOREIGN KEY (VerifiedBy) REFERENCES USERS(USERID), 
+    CONSTRAINT UQ_RESULTS_Enrolment UNIQUE (ENROLMENTID), 
+    CONSTRAINT CK_RESULT_Status CHECK (Status IN ('Pending', 'Verified', 'Disqualified', 'DNS', 'DNF')) 
+); 
+
+INSERT INTO RESULTS (ENROLMENTID, CATEGORIESID, FINISHTIME, OVERALLRANK, CATEGORYRANK, NOTES, Status, VerifiedBy) VALUES  
+    (1, 2, '03:45:22', 156, 42, 'Strong performance', 'Verified', 2), 
+    (2, 5, '00:52:15', 34, 12, 'Personal best', 'Verified', 2), 
+    (3, 3, NULL, NULL, NULL, 'Did not start', 'DNS', NULL), 
+    (4, 8, '04:12:45', 15, 5, 'Excellent performance', 'Verified', 1), 
+    (5, 11, '01:38:22', 87, 28, 'Good race', 'Verified', 2), 
+    (6, 14, '02:15:30', 42, 15, 'Trail specialist', 'Verified', 1), 
+    (7, 2, '03:52:10', 189, 55, 'Solid run', 'Verified', 2), 
+    (8, 11, '01:45:33', 112, 35, 'Good effort', 'Verified', 2); 
+
+ select * from RESULTS;
+
+
+ CREATE TABLE ENROLMENTS ( 
+    ENROLMENTID INT IDENTITY(1,1) PRIMARY KEY, 
+    USERID INT NOT NULL, 
+    CATEGORIESID INT NOT NULL, 
+    RegistrationDate DATETIME DEFAULT GETDATE(), 
+    Status VARCHAR(20) NOT NULL DEFAULT 'Pending', 
+    PaymentStatus VARCHAR(20) NOT NULL DEFAULT 'Unpaid', 
+    BibNumber VARCHAR(20) NULL, 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    UpdatedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (USERID) REFERENCES USERS(USERID) ON DELETE CASCADE, 
+    FOREIGN KEY (CATEGORIESID) REFERENCES CATEGORIES(CATEGORIESID) ON DELETE CASCADE, 
+    CONSTRAINT UQ_ENROLMENTS_UserCategory UNIQUE (USERID, CATEGORIESID), 
+    CONSTRAINT CK_ENROLMENT_Status CHECK (Status IN ('Pending', 'Confirmed', 'Withdrawn', 'Attended', 'DNS', 'DNF')), 
+    CONSTRAINT CK_ENROLMENT_PaymentStatus CHECK (PaymentStatus IN ('Unpaid', 'Paid', 'Refunded')) 
+); 
+
+INSERT INTO ENROLMENTS (USERID, CATEGORIESID, Status, PaymentStatus) VALUES  
+    (3, 2, 'Confirmed', 'Paid'), 
+    (4, 5, 'Confirmed', 'Paid'), 
+    (5, 3, 'Confirmed', 'Paid'), 
+    (3, 8, 'Confirmed', 'Paid'), 
+    (4, 11, 'Confirmed', 'Paid'), 
+    (6, 14, 'Confirmed', 'Paid'), 
+    (5, 2, 'Confirmed', 'Paid'), 
+    (6, 11, 'Confirmed', 'Paid'); 
+
+    select * from ENROLMENTS;
+
+
+    CREATE TABLE CATEGORIES ( 
+    CATEGORIESID INT IDENTITY(1,1) PRIMARY KEY, 
+    EVENTSDID INT NOT NULL, 
+    CATEGORYNAME VARCHAR(50) NOT NULL, 
+    DISTANCE DECIMAL(5,2) NOT NULL, 
+    AGEGROUP VARCHAR(50) NULL, 
+    GENDERRESTRICTION VARCHAR(20) NULL, 
+    PATICIPANTS INT NOT NULL DEFAULT 0, 
+    MaxParticipants INT NOT NULL DEFAULT 50, 
+    Fee DECIMAL(10,2) NOT NULL DEFAULT 0.00, 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (EVENTSDID) REFERENCES EVENTS(EVENTSDID) ON DELETE CASCADE, 
+    CONSTRAINT CK_CATEGORY_Distance CHECK (DISTANCE > 0), 
+    CONSTRAINT CK_CATEGORY_Gender CHECK (GENDERRESTRICTION IN ('Male', 'Female', 'Any', NULL)) 
+); 
+
+INSERT INTO CATEGORIES (EVENTSDID, CATEGORYNAME, DISTANCE, AGEGROUP, GENDERRESTRICTION, PATICIPANTS, MaxParticipants, Fee) VALUES  
+    (1, 'Marathon Elite', 42.195, '18-35', 'Any', 0, 200, 550.00), 
+    (1, 'Marathon Open', 42.195, '36-55', 'Any', 0, 1500, 450.00), 
+    (1, 'Marathon Veteran', 42.195, '56+', 'Any', 0, 500, 450.00), 
+    (1, 'Marathon Women', 42.195, '18+', 'Female', 0, 500, 450.00), 
+    (2, '10km Open', 10.00, '16-40', 'Any', 0, 1000, 250.00), 
+    (2, '10km Veteran', 10.00, '41+', 'Any', 0, 500, 250.00), 
+    (2, '10km Women', 10.00, '16+', 'Female', 0, 300, 250.00), 
+    (3, 'Ultra 50km', 50.00, '20-40', 'Any', 0, 200, 800.00), 
+    (3, 'Ultra 50km Veteran', 50.00, '41+', 'Any', 0, 150, 750.00), 
+    (3, 'Ultra 80km', 80.00, '25-45', 'Any', 0, 100, 950.00), 
+    (4, 'Half Open', 21.10, '18-35', 'Any', 0, 500, 350.00), 
+    (4, 'Half Veteran', 21.10, '36+', 'Any', 0, 500, 350.00), 
+    (5, 'Trail 12km', 12.00, '16+', 'Any', 0, 100, 400.00), 
+    (5, 'Trail 25km', 25.00, '18+', 'Any', 0, 150, 500.00), 
+    (6, '5km Fun Run', 5.00, '6-12', 'Any', 0, 200, 100.00), 
+    (6, '5km Open', 5.00, '13+', 'Any', 0, 400, 150.00); 
+
+select * from CATEGORIES;
+
+CREATE TABLE EVENTS ( 
+    EVENTSDID INT IDENTITY(1,1) PRIMARY KEY, 
+    EVENTNAME VARCHAR(100) NOT NULL, 
+    EVENTDATE DATETIME NOT NULL, 
+    VENUE VARCHAR(100) NOT NULL, 
+    LOCATION VARCHAR(255) NULL, 
+    DESCRIPTION VARCHAR(500) NULL, 
+    USERID INT NOT NULL, 
+    MaxParticipants INT NOT NULL DEFAULT 100, 
+    RegistrationFee DECIMAL(10,2) NOT NULL DEFAULT 0.00, 
+    Status VARCHAR(20) NOT NULL DEFAULT 'Draft', 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    UpdatedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (USERID) REFERENCES USERS(USERID), 
+    CONSTRAINT CK_EVENT_Date CHECK (EVENTDATE > GETDATE()), 
+    CONSTRAINT CK_EVENT_Status CHECK (Status IN ('Draft', 'Published', 'Open', 'Closed', 'Cancelled', 'Completed')) 
+); 
+
+INSERT INTO EVENTS (EVENTNAME, EVENTDATE, VENUE, LOCATION, DESCRIPTION, USERID, MaxParticipants, RegistrationFee, Status) VALUES  
+    ('Cape Town Marathon', '2026-12-15 06:00:00', 'Green Point Stadium', 'Cape Town, Western Cape', 'Premier marathon event', 1, 5000, 450.00, 'Open'), 
+    ('Johannesburg 10km', '2026-11-20 07:00:00', 'Wanderers Stadium', 'Johannesburg, Gauteng', 'Fast 10km race', 1, 2000, 250.00, 'Open'), 
+    ('Durban Ultra', '2027-01-25 05:00:00', 'Kings Park Stadium', 'Durban, KwaZulu-Natal', 'Ultra endurance race', 2, 500, 750.00, 'Published'), 
+    ('Pretoria Half', '2026-10-10 06:30:00', 'Loftus Versfeld', 'Pretoria, Gauteng','Half marathon', 2, 1500, 350.00, 'Closed'), 
+    ('Garden Route Trail', '2026-12-05 07:00:00', 'George Golf Course', 'George, Western Cape', 'Trail run', 1, 300, 400.00, 'Draft'), 
+    ('Bloemfontein 5km', '2026-12-20 08:00:00', 'Free State Stadium', 'Bloemfontein, Free State', 'Fun run', 2, 800, 150.00, 'Completed'); 
+
+ select * from EVENTS;
+
+ CREATE TABLE USERS ( 
+    USERID INT IDENTITY(1,1) PRIMARY KEY, 
+    EMAIL VARCHAR(100) NOT NULL, 
+    FIRSTNAME VARCHAR(50) NOT NULL, 
+ 
+
+    SURNAME VARCHAR(50) NOT NULL, 
+    GENDER VARCHAR(20) NULL, 
+    PHONENUMBER VARCHAR(20) NULL, 
+    ADRESS VARCHAR(255) NULL, 
+    DATEOFBIHTH DATE NOT NULL, 
+    PasswordHash VARCHAR(255) NOT NULL, 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    UpdatedAt DATETIME DEFAULT GETDATE(), 
+    IsActive BIT DEFAULT 1, 
+    CONSTRAINT CK_USERS_Age CHECK (DATEDIFF(YEAR, DATEOFBIHTH, GETDATE()) >= 10) 
+); 
+
+select * from USERS;CREATE DATABASE RaceDayDB; 
+ 
+USE RaceDayDB; 
+ 
+CREATE TABLE ROLES ( 
+    ROLESID INT IDENTITY(1,1) PRIMARY KEY, 
+    ROLENAME VARCHAR(50) NOT NULL, 
+    DESCRIPTION VARCHAR(255) NULL, 
+    CreatedAt DATETIME DEFAULT GETDATE() 
+); 
+INSERT INTO ROLES (ROLENAME, DESCRIPTION) VALUES  
+    ('Organiser', 'Can create and manage events, categories, and results'), 
+    ('Participant', 'Can register for events, enrol in categories, and view results'); 
+
+    select * from ROLES;
+
+     
+
+CREATE TABLE ASSIGNMENT ( 
+    ASSIGNMENTID INT IDENTITY(1,1) PRIMARY KEY, 
+    USERID INT NOT NULL, 
+    ROLESID INT NOT NULL, 
+    AssignedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (USERID) REFERENCES USERS(USERID) ON DELETE CASCADE, 
+    FOREIGN KEY (ROLESID) REFERENCES ROLES(ROLESID) ON DELETE CASCADE, 
+    CONSTRAINT UQ_ASSIGNMENT_UserRole UNIQUE (USERID, ROLESID) 
+); 
+
+INSERT INTO ASSIGNMENT (USERID, ROLESID) VALUES  
+    (1, 1), (2, 1), (3, 2), (4, 2), (5, 2), (6, 2); 
+    
+
+    select * from ASSIGNMENT;
+
+    CREATE TABLE RESULTS ( 
+    RESULTSID INT IDENTITY(1,1) PRIMARY KEY, 
+    ENROLMENTID INT NOT NULL, 
+    CATEGORIESID INT NOT NULL, 
+    FINISHTIME TIME NULL, 
+    OVERALLRANK INT NULL, 
+    CATEGORYRANK INT NULL, 
+    NOTES VARCHAR(255) NULL, 
+    Status VARCHAR(20) NOT NULL DEFAULT 'Pending', 
+    VerifiedBy INT NULL, 
+    VerifiedAt DATETIME NULL, 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    UpdatedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (ENROLMENTID) REFERENCES ENROLMENTS(ENROLMENTID) ON DELETE CASCADE, 
+    FOREIGN KEY (CATEGORIESID) REFERENCES CATEGORIES(CATEGORIESID), 
+    FOREIGN KEY (VerifiedBy) REFERENCES USERS(USERID), 
+    CONSTRAINT UQ_RESULTS_Enrolment UNIQUE (ENROLMENTID), 
+    CONSTRAINT CK_RESULT_Status CHECK (Status IN ('Pending', 'Verified', 'Disqualified', 'DNS', 'DNF')) 
+); 
+
+INSERT INTO RESULTS (ENROLMENTID, CATEGORIESID, FINISHTIME, OVERALLRANK, CATEGORYRANK, NOTES, Status, VerifiedBy) VALUES  
+    (1, 2, '03:45:22', 156, 42, 'Strong performance', 'Verified', 2), 
+    (2, 5, '00:52:15', 34, 12, 'Personal best', 'Verified', 2), 
+    (3, 3, NULL, NULL, NULL, 'Did not start', 'DNS', NULL), 
+    (4, 8, '04:12:45', 15, 5, 'Excellent performance', 'Verified', 1), 
+    (5, 11, '01:38:22', 87, 28, 'Good race', 'Verified', 2), 
+    (6, 14, '02:15:30', 42, 15, 'Trail specialist', 'Verified', 1), 
+    (7, 2, '03:52:10', 189, 55, 'Solid run', 'Verified', 2), 
+    (8, 11, '01:45:33', 112, 35, 'Good effort', 'Verified', 2); 
+
+ select * from RESULTS;
+
+
+ CREATE TABLE ENROLMENTS ( 
+    ENROLMENTID INT IDENTITY(1,1) PRIMARY KEY, 
+    USERID INT NOT NULL, 
+    CATEGORIESID INT NOT NULL, 
+    RegistrationDate DATETIME DEFAULT GETDATE(), 
+    Status VARCHAR(20) NOT NULL DEFAULT 'Pending', 
+    PaymentStatus VARCHAR(20) NOT NULL DEFAULT 'Unpaid', 
+    BibNumber VARCHAR(20) NULL, 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    UpdatedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (USERID) REFERENCES USERS(USERID) ON DELETE CASCADE, 
+    FOREIGN KEY (CATEGORIESID) REFERENCES CATEGORIES(CATEGORIESID) ON DELETE CASCADE, 
+    CONSTRAINT UQ_ENROLMENTS_UserCategory UNIQUE (USERID, CATEGORIESID), 
+    CONSTRAINT CK_ENROLMENT_Status CHECK (Status IN ('Pending', 'Confirmed', 'Withdrawn', 'Attended', 'DNS', 'DNF')), 
+    CONSTRAINT CK_ENROLMENT_PaymentStatus CHECK (PaymentStatus IN ('Unpaid', 'Paid', 'Refunded')) 
+); 
+
+INSERT INTO ENROLMENTS (USERID, CATEGORIESID, Status, PaymentStatus) VALUES  
+    (3, 2, 'Confirmed', 'Paid'), 
+    (4, 5, 'Confirmed', 'Paid'), 
+    (5, 3, 'Confirmed', 'Paid'), 
+    (3, 8, 'Confirmed', 'Paid'), 
+    (4, 11, 'Confirmed', 'Paid'), 
+    (6, 14, 'Confirmed', 'Paid'), 
+    (5, 2, 'Confirmed', 'Paid'), 
+    (6, 11, 'Confirmed', 'Paid'); 
+
+    select * from ENROLMENTS;
+
+
+    CREATE TABLE CATEGORIES ( 
+    CATEGORIESID INT IDENTITY(1,1) PRIMARY KEY, 
+    EVENTSDID INT NOT NULL, 
+    CATEGORYNAME VARCHAR(50) NOT NULL, 
+    DISTANCE DECIMAL(5,2) NOT NULL, 
+    AGEGROUP VARCHAR(50) NULL, 
+    GENDERRESTRICTION VARCHAR(20) NULL, 
+    PATICIPANTS INT NOT NULL DEFAULT 0, 
+    MaxParticipants INT NOT NULL DEFAULT 50, 
+    Fee DECIMAL(10,2) NOT NULL DEFAULT 0.00, 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (EVENTSDID) REFERENCES EVENTS(EVENTSDID) ON DELETE CASCADE, 
+    CONSTRAINT CK_CATEGORY_Distance CHECK (DISTANCE > 0), 
+    CONSTRAINT CK_CATEGORY_Gender CHECK (GENDERRESTRICTION IN ('Male', 'Female', 'Any', NULL)) 
+); 
+
+INSERT INTO CATEGORIES (EVENTSDID, CATEGORYNAME, DISTANCE, AGEGROUP, GENDERRESTRICTION, PATICIPANTS, MaxParticipants, Fee) VALUES  
+    (1, 'Marathon Elite', 42.195, '18-35', 'Any', 0, 200, 550.00), 
+    (1, 'Marathon Open', 42.195, '36-55', 'Any', 0, 1500, 450.00), 
+    (1, 'Marathon Veteran', 42.195, '56+', 'Any', 0, 500, 450.00), 
+    (1, 'Marathon Women', 42.195, '18+', 'Female', 0, 500, 450.00), 
+    (2, '10km Open', 10.00, '16-40', 'Any', 0, 1000, 250.00), 
+    (2, '10km Veteran', 10.00, '41+', 'Any', 0, 500, 250.00), 
+    (2, '10km Women', 10.00, '16+', 'Female', 0, 300, 250.00), 
+    (3, 'Ultra 50km', 50.00, '20-40', 'Any', 0, 200, 800.00), 
+    (3, 'Ultra 50km Veteran', 50.00, '41+', 'Any', 0, 150, 750.00), 
+    (3, 'Ultra 80km', 80.00, '25-45', 'Any', 0, 100, 950.00), 
+    (4, 'Half Open', 21.10, '18-35', 'Any', 0, 500, 350.00), 
+    (4, 'Half Veteran', 21.10, '36+', 'Any', 0, 500, 350.00), 
+    (5, 'Trail 12km', 12.00, '16+', 'Any', 0, 100, 400.00), 
+    (5, 'Trail 25km', 25.00, '18+', 'Any', 0, 150, 500.00), 
+    (6, '5km Fun Run', 5.00, '6-12', 'Any', 0, 200, 100.00), 
+    (6, '5km Open', 5.00, '13+', 'Any', 0, 400, 150.00); 
+
+select * from CATEGORIES;
+
+CREATE TABLE EVENTS ( 
+    EVENTSDID INT IDENTITY(1,1) PRIMARY KEY, 
+    EVENTNAME VARCHAR(100) NOT NULL, 
+    EVENTDATE DATETIME NOT NULL, 
+    VENUE VARCHAR(100) NOT NULL, 
+    LOCATION VARCHAR(255) NULL, 
+    DESCRIPTION VARCHAR(500) NULL, 
+    USERID INT NOT NULL, 
+    MaxParticipants INT NOT NULL DEFAULT 100, 
+    RegistrationFee DECIMAL(10,2) NOT NULL DEFAULT 0.00, 
+    Status VARCHAR(20) NOT NULL DEFAULT 'Draft', 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    UpdatedAt DATETIME DEFAULT GETDATE(), 
+    FOREIGN KEY (USERID) REFERENCES USERS(USERID), 
+    CONSTRAINT CK_EVENT_Date CHECK (EVENTDATE > GETDATE()), 
+    CONSTRAINT CK_EVENT_Status CHECK (Status IN ('Draft', 'Published', 'Open', 'Closed', 'Cancelled', 'Completed')) 
+); 
+
+INSERT INTO EVENTS (EVENTNAME, EVENTDATE, VENUE, LOCATION, DESCRIPTION, USERID, MaxParticipants, RegistrationFee, Status) VALUES  
+    ('Cape Town Marathon', '2026-12-15 06:00:00', 'Green Point Stadium', 'Cape Town, Western Cape', 'Premier marathon event', 1, 5000, 450.00, 'Open'), 
+    ('Johannesburg 10km', '2026-11-20 07:00:00', 'Wanderers Stadium', 'Johannesburg, Gauteng', 'Fast 10km race', 1, 2000, 250.00, 'Open'), 
+    ('Durban Ultra', '2027-01-25 05:00:00', 'Kings Park Stadium', 'Durban, KwaZulu-Natal', 'Ultra endurance race', 2, 500, 750.00, 'Published'), 
+    ('Pretoria Half', '2026-10-10 06:30:00', 'Loftus Versfeld', 'Pretoria, Gauteng','Half marathon', 2, 1500, 350.00, 'Closed'), 
+    ('Garden Route Trail', '2026-12-05 07:00:00', 'George Golf Course', 'George, Western Cape', 'Trail run', 1, 300, 400.00, 'Draft'), 
+    ('Bloemfontein 5km', '2026-12-20 08:00:00', 'Free State Stadium', 'Bloemfontein, Free State', 'Fun run', 2, 800, 150.00, 'Completed'); 
+
+ select * from EVENTS;
+
+ CREATE TABLE USERS ( 
+    USERID INT IDENTITY(1,1) PRIMARY KEY, 
+    EMAIL VARCHAR(100) NOT NULL, 
+    FIRSTNAME VARCHAR(50) NOT NULL, 
+ 
+
+    SURNAME VARCHAR(50) NOT NULL, 
+    GENDER VARCHAR(20) NULL, 
+    PHONENUMBER VARCHAR(20) NULL, 
+    ADRESS VARCHAR(255) NULL, 
+    DATEOFBIHTH DATE NOT NULL, 
+    PasswordHash VARCHAR(255) NOT NULL, 
+    CreatedAt DATETIME DEFAULT GETDATE(), 
+    UpdatedAt DATETIME DEFAULT GETDATE(), 
+    IsActive BIT DEFAULT 1, 
+    CONSTRAINT CK_USERS_Age CHECK (DATEDIFF(YEAR, DATEOFBIHTH, GETDATE()) >= 10) 
+); 
+
+select * from USERS;
