@@ -1,102 +1,78 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using API_proj.Data;
+using API_proj.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using API_proj.Data;
-using API_proj.Models;
 
 namespace API_proj.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class RoleController : ControllerBase
+    [Route("api/roles")]
+    public class RolesController : ControllerBase
     {
-        private readonly RaceDayDbContext _context;
+        private readonly RaceDayDbContext _db;
+        public RolesController(RaceDayDbContext db) => _db = db;
 
-        public RoleController(RaceDayDbContext context)
-        {
-            _context = context;
-        }
-
-        // GET: api/roles?search=admin&sortBy=roleName&sortDir=asc
+        // GET: api/roles
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Role>>> GetRoles(
-            [FromQuery] string? search = null,
-            [FromQuery] string? sortBy = "roleId",
-            [FromQuery] string? sortDir = "asc")
-        {
-            var query = _context.Roles.AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(search))
-                query = query.Where(r => r.RoleName.Contains(search));
-
-            var descending = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
-            query = (sortBy?.ToLower()) switch
-            {
-                "rolename" => descending ? query.OrderByDescending(r => r.RoleName) : query.OrderBy(r => r.RoleName),
-                _ => descending ? query.OrderByDescending(r => r.RoleId) : query.OrderBy(r => r.RoleId),
-            };
-
-            return await query.ToListAsync();
-        }
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAll()
+            => Ok(await _db.Roles.ToListAsync());
 
         // GET: api/roles/5
-        [HttpGet("{id:int}")]
-        public async Task<ActionResult<Role>> GetRole(int id)
+        [HttpGet("{id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Get(int id)
         {
-            if (id <= 0) return BadRequest(new { error = "Id must be greater than 0." });
-
-            var role = await _context.Roles.FindAsync(id);
-
-            if (role == null) return NotFound(new { error = $"Role with id {id} was not found." });
-
-            return role;
+            var role = await _db.Roles.FindAsync(id);
+            return role == null ? NotFound() : Ok(role);
         }
 
         // POST: api/roles
         [HttpPost]
-        public async Task<ActionResult<Role>> CreateRole([FromBody] Role role)
+        [Authorize(Roles = "Organiser")]
+        public async Task<IActionResult> Create([FromBody] Role role)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (string.IsNullOrWhiteSpace(role.RoleName))
+                return BadRequest(new { message = "RoleName is required" });
 
-            _context.Roles.Add(role);
-            await _context.SaveChangesAsync();
+            if (await _db.Roles.AnyAsync(r => r.RoleName == role.RoleName))
+                return Conflict(new { message = "Role already exists" });
 
-            return CreatedAtAction(nameof(GetRole), new { id = role.RoleId }, role);
+            role.CreatedAt = DateTime.Now;
+            _db.Roles.Add(role);
+            await _db.SaveChangesAsync();
+            return StatusCode(201, role);
         }
 
         // PUT: api/roles/5
-        [HttpPut("{id:int}")]
-        public async Task<IActionResult> UpdateRole(int id, [FromBody] Role role)
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Organiser")]
+        public async Task<IActionResult> Update(int id, [FromBody] Role dto)
         {
-            if (id <= 0) return BadRequest(new { error = "Id must be greater than 0." });
-            if (id != role.RoleId) return BadRequest(new { error = "Route id does not match body RoleId." });
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var role = await _db.Roles.FindAsync(id);
+            if (role == null) return NotFound();
 
-            var exists = await _context.Roles.AnyAsync(r => r.RoleId == id);
-            if (!exists) return NotFound(new { error = $"Role with id {id} was not found." });
-
-            _context.Entry(role).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-
+            role.RoleName = dto.RoleName;
+            role.Description = dto.Description;
+            await _db.SaveChangesAsync();
             return Ok(role);
         }
 
         // DELETE: api/roles/5
-        [HttpDelete("{id:int}")]
-        public async Task<IActionResult> DeleteRole(int id)
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Organiser")]
+        public async Task<IActionResult> Delete(int id)
         {
-            if (id <= 0) return BadRequest(new { error = "Id must be greater than 0." });
+            var role = await _db.Roles.FindAsync(id);
+            if (role == null) return NotFound();
 
-            var role = await _context.Roles.FindAsync(id);
-            if (role == null) return NotFound(new { error = $"Role with id {id} was not found." });
+            bool inUse = await _db.Assignments.AnyAsync(a => a.RoleId == id);
+            if (inUse) return BadRequest(new { message = "Cannot delete role — it is assigned to users" });
 
-            _context.Roles.Remove(role);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            _db.Roles.Remove(role);
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "Role deleted" });
         }
     }
 }

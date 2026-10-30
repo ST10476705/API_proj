@@ -1,43 +1,46 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace API_proj.Models
 {
+    [Table("ENROLMENTS")]
     public class Enrolment
     {
         [Key]
+        [Column("ENROLMENTID")]
         public int EnrolmentId { get; set; }
 
-        [Required]
+        [Column("USERID")]
         public int UserId { get; set; }
 
-        [JsonIgnore]
-        [ForeignKey(nameof(UserId))]
-        public User? User { get; set; }
-
-        [Required]
-        public int EventId { get; set; }
-
-        [JsonIgnore]
-        [ForeignKey(nameof(EventId))]
-        public Event? Event { get; set; }
-
-        [Required]
+        [Column("CATEGORIESID")]
         public int CategoryId { get; set; }
 
-        [JsonIgnore]
-        [ForeignKey(nameof(CategoryId))]
-        public Category? Category { get; set; }
+        [Column("RegistrationDate")]
+        public DateTime RegistrationDate { get; set; }
 
-        [MaxLength(50)]
+        [Column("Status")]
+        [MaxLength(20)]
         public string Status { get; set; } = "Pending";
 
-        [MaxLength(50)]
+        [Column("PaymentStatus")]
+        [MaxLength(20)]
         public string PaymentStatus { get; set; } = "Unpaid";
 
-        public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
+        [Column("BibNumber")]
+        [MaxLength(20)]
+        public string? BibNumber { get; set; }
 
-        public Result? Result { get; set; }
+        [Column("CreatedAt")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("UpdatedAt")]
+        public DateTime UpdatedAt { get; set; }
+
+        // Navigation
+        // NOTE: no EventId — the Event is reached via Category.Event
+        public User? User { get; set; }
+        public Category? Category { get; set; }
     }
 }

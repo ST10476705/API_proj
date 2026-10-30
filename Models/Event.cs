@@ -1,54 +1,56 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace API_proj.Models
 {
+    [Table("EVENTS")]
     public class Event
     {
         [Key]
+        [Column("EVENTSDID")]
         public int EventId { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        public string EventName { get; set; } = string.Empty;
+        [Column("EVENTNAME")]
+        [Required, MaxLength(100)]
+        public string EventName { get; set; } = "";
 
-        [Required]
+        [Column("EVENTDATE")]
         public DateTime EventDate { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        public string Venue { get; set; } = string.Empty;
+        [Column("VENUE")]
+        [Required, MaxLength(100)]
+        public string Venue { get; set; } = "";
 
+        [Column("LOCATION")]
         [MaxLength(255)]
         public string? Location { get; set; }
 
+        [Column("DESCRIPTION")]
         [MaxLength(500)]
         public string? Description { get; set; }
 
-        [Required]
+        [Column("USERID")]
         public int UserId { get; set; }
 
+        [Column("MaxParticipants")]
         public int MaxParticipants { get; set; } = 100;
 
-        [Column(TypeName = "decimal(10,2)")]
-        public decimal RegistrationFee { get; set; } = 0.00m;
+        [Column("RegistrationFee")]
+        public decimal RegistrationFee { get; set; }
 
-        [Required]
+        [Column("Status")]
         [MaxLength(20)]
         public string Status { get; set; } = "Draft";
 
-        public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
+        [Column("CreatedAt")]
+        public DateTime CreatedAt { get; set; }
 
-        [JsonIgnore]
-        [ForeignKey(nameof(UserId))]
-        public User? User { get; set; }
+        [Column("UpdatedAt")]
+        public DateTime UpdatedAt { get; set; }
 
-        [JsonIgnore]
+        // Navigation
         public ICollection<Category> Categories { get; set; } = new List<Category>();
-
-        [JsonIgnore]
-        public ICollection<Enrolment> Enrolments { get; set; } = new List<Enrolment>();
     }
 }

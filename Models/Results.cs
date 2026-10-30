@@ -1,37 +1,53 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace API_proj.Models
 {
+    [Table("RESULTS")]
     public class Result
     {
         [Key]
+        [Column("RESULTSID")]
         public int ResultsId { get; set; }
 
-        [Required]
-        public int EnrolmentsId { get; set; }
+        [Column("ENROLMENTID")]
+        public int EnrolmentId { get; set; }
 
-        [JsonIgnore]
-        [ForeignKey(nameof(EnrolmentsId))]
-        public Enrolment? Enrolment { get; set; }
+        [Column("CATEGORIESID")]         // NOT NULL in DB — must be set
+        public int CategoryId { get; set; }
 
+        [Column("FINISHTIME")]
         public TimeSpan? FinishTime { get; set; }
 
+        [Column("OVERALLRANK")]
         public int? OverallRank { get; set; }
 
+        [Column("CATEGORYRANK")]
         public int? CategoryRank { get; set; }
 
-        [MaxLength(500)]
+        [Column("NOTES")]
+        [MaxLength(255)]
         public string? Notes { get; set; }
 
-        [MaxLength(50)]
+        [Column("Status")]
+        [MaxLength(20)]
         public string Status { get; set; } = "Pending";
 
-        public bool IsVerified { get; set; } = false;
+        [Column("VerifiedBy")]
+        public int? VerifiedBy { get; set; }
 
+        [Column("VerifiedAt")]
         public DateTime? VerifiedAt { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        [Column("CreatedAt")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("UpdatedAt")]
+        public DateTime UpdatedAt { get; set; }
+
+        // Navigation
+        public Enrolment? Enrolment { get; set; }
+        public Category? Category { get; set; }
     }
 }

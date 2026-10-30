@@ -9,58 +9,59 @@ namespace API_proj.Data
             : base(options) { }
 
         public DbSet<User> Users => Set<User>();
-        public DbSet<Role> Roles => Set<Role>();
-        public DbSet<Assignment> Assignments => Set<Assignment>();
         public DbSet<Event> Events => Set<Event>();
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<Enrolment> Enrolments => Set<Enrolment>();
         public DbSet<Result> Results => Set<Result>();
+        public DbSet<Role> Roles => Set<Role>();
+        public DbSet<Assignment> Assignments => Set<Assignment>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
-
-            modelBuilder.Entity<User>()
-                .HasIndex(u => u.Email)
+            // Unique constraint from DB: UQ_ASSIGNMENT_UserRole
+            modelBuilder.Entity<Assignment>()
+                .HasIndex(a => new { a.UserId, a.RoleId })
                 .IsUnique();
 
-            modelBuilder.Entity<Role>()
-                .HasIndex(r => r.RoleName)
+            // Unique constraint: UQ_ENROLMENTS_UserCategory
+            modelBuilder.Entity<Enrolment>()
+                .HasIndex(e => new { e.UserId, e.CategoryId })
                 .IsUnique();
 
+            // Unique constraint: UQ_RESULTS_Enrolment
             modelBuilder.Entity<Result>()
-                .HasIndex(r => r.EnrolmentsId)
+                .HasIndex(r => r.EnrolmentId)
                 .IsUnique();
 
-            modelBuilder.Entity<Enrolment>()
-                .HasOne(e => e.Event)
-                .WithMany(ev => ev.Enrolments)
-                .HasForeignKey(e => e.EventId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Enrolment>()
-                .HasOne(e => e.Category)
-                .WithMany(c => c.Enrolments)
-                .HasForeignKey(e => e.CategoryId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Event>()
-                .HasOne(e => e.User)
-                .WithMany(u => u.Events)
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
+            // ✅ Assignment → User (one User, many Assignments)
             modelBuilder.Entity<Assignment>()
                 .HasOne(a => a.User)
                 .WithMany(u => u.Assignments)
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // ✅ Assignment → Role (one Role, many Assignments)
             modelBuilder.Entity<Assignment>()
                 .HasOne(a => a.Role)
                 .WithMany(r => r.Assignments)
                 .HasForeignKey(a => a.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ✅ Enrolment → Category
+            modelBuilder.Entity<Enrolment>()
+                .HasOne(e => e.Category)
+                .WithMany(c => c.Enrolments)
+                .HasForeignKey(e => e.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ✅ Result → Enrolment (1:1)
+            modelBuilder.Entity<Result>()
+                .HasOne(r => r.Enrolment)
+                .WithMany()
+                .HasForeignKey(r => r.EnrolmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }

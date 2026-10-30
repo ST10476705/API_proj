@@ -19,24 +19,23 @@ namespace API_proj.Services
         }
 
         public string CreateToken(User user, string role)
+            => CreateToken(user, new[] { role });
+
+        public string CreateToken(User user, IEnumerable<string> roles)
         {
-            // Read JWT settings
             var jwtKey = _config["Jwt:Key"];
             var issuer = _config["Jwt:Issuer"];
             var audience = _config["Jwt:Audience"];
             var expiryValue = _config["Jwt:ExpiryMinutes"];
 
-            // Check required settings
-            if (string.IsNullOrWhiteSpace(jwtKey) ||
-                string.IsNullOrWhiteSpace(issuer) ||
-                string.IsNullOrWhiteSpace(audience))
-            {
+            if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
                 throw new InvalidOperationException(
-                    "JWT configuration is missing. Check Jwt:Key, Jwt:Issuer and Jwt:Audience in appsettings.json."
-                );
-            }
+                    "Jwt:Key is missing or too short. It must be at least 32 characters (256 bits).");
 
-            // Fix the Double.Parse null error
+            if (string.IsNullOrWhiteSpace(issuer) || string.IsNullOrWhiteSpace(audience))
+                throw new InvalidOperationException(
+                    "JWT configuration missing: Jwt:Issuer or Jwt:Audience.");
+
             if (!double.TryParse(
                     expiryValue,
                     NumberStyles.Any,
@@ -45,53 +44,34 @@ namespace API_proj.Services
                 expiryMinutes <= 0)
             {
                 throw new InvalidOperationException(
-                    "Jwt:ExpiryMinutes is missing or invalid. Set it to 60 in appsettings.json."
-                );
+                    "Jwt:ExpiryMinutes is missing or invalid. Set it in appsettings.json (e.g. 60).");
             }
 
-            // Create user claims
             var claims = new List<Claim>
             {
-                new Claim(
-                    ClaimTypes.NameIdentifier,
-                    user.UserId.ToString()
-                ),
-                new Claim(
-                    ClaimTypes.Email,
-                    user.Email ?? ""
-                ),
-                new Claim(
-                    ClaimTypes.Role,
-                    role
-                ),
-                new Claim(
-                    "FirstName",
-                    user.FirstName ?? ""
-                )
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Email,          user.Email ?? ""),
+                new Claim("FirstName",               user.FirstName ?? ""),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            // Create the security key
-            var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtKey)
-            );
+            // One ClaimTypes.Role per role
+            foreach (var role in roles)
+                claims.Add(new Claim(ClaimTypes.Role, role));
 
-            var credentials = new SigningCredentials(
-                key,
-                SecurityAlgorithms.HmacSha256
-            );
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            // Generate the JWT token
             var token = new JwtSecurityToken(
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddYears(100),
+                notBefore: DateTime.UtcNow,
+                expires: DateTime.UtcNow.AddMinutes(expiryMinutes),  // ✅ uses config
                 signingCredentials: credentials
             );
 
-            // Return the generated token
-            return new JwtSecurityTokenHandler()
-                .WriteToken(token);
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

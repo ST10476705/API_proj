@@ -34,7 +34,9 @@ namespace API_proj.Controllers
             if (me != id && !User.IsInRole("Organiser")) return Forbid();
 
             var user = await _db.Users.FindAsync(id);
-            return user == null ? NotFound() : Ok(new { user.UserId, user.Email, user.FirstName, user.Surname });
+            return user == null
+                ? NotFound()
+                : Ok(new { user.UserId, user.Email, user.FirstName, user.Surname });
         }
 
         // PUT: api/users/5
@@ -84,6 +86,7 @@ namespace API_proj.Controllers
             var user = await _db.Users.FindAsync(id);
             if (user == null) return NotFound();
             user.IsActive = false;
+            user.UpdatedAt = DateTime.Now;
             await _db.SaveChangesAsync();
             return Ok(new { message = "User deactivated" });
         }

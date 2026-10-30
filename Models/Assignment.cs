@@ -1,27 +1,27 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace API_proj.Models
 {
+    [Table("ASSIGNMENT")]                // singular in DB
     public class Assignment
     {
         [Key]
+        [Column("ASSIGNMENTID")]
         public int AssignmentId { get; set; }
 
-        [Required]
+        [Column("USERID")]
         public int UserId { get; set; }
 
-        [JsonIgnore]
-        [ForeignKey(nameof(UserId))]
-        public User? User { get; set; }
-
-        [Required]
+        [Column("ROLESID")]
         public int RoleId { get; set; }
 
-        [ForeignKey(nameof(RoleId))]
-        public Role? Role { get; set; }
+        [Column("AssignedAt")]
+        public DateTime AssignedAt { get; set; }
 
-        public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
+        // Navigation
+        public User? User { get; set; }
+        public Role? Role { get; set; }
     }
 }

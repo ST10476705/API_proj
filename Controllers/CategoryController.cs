@@ -1,5 +1,4 @@
-﻿
-using API_proj.Data;
+﻿using API_proj.Data;
 using API_proj.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +24,6 @@ namespace API_proj.Controllers
             var cats = await _db.Categories
                 .Where(c => c.EventId == eventId)
                 .ToListAsync();
-
             return Ok(cats);
         }
 
@@ -37,25 +35,23 @@ namespace API_proj.Controllers
             var c = await _db.Categories
                 .Include(x => x.Enrolments)
                 .FirstOrDefaultAsync(x => x.CategoriesId == id);
-
             return c == null ? NotFound() : Ok(c);
         }
 
-        // POST: api/categories
+        // POST: api/categories  (Organiser only)
         [HttpPost("categories")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> Create([FromBody] Category cat)
         {
             var ev = await _db.Events.FindAsync(cat.EventId);
-
             if (ev == null)
                 return NotFound(new { message = "Event not found" });
 
-            cat.CreatedAt = DateTime.Now;
+            if (ev.UserId != CurrentUserId) return Forbid();   // ✅ FIX
 
+            cat.CreatedAt = DateTime.Now;
             _db.Categories.Add(cat);
             await _db.SaveChangesAsync();
-
             return StatusCode(201, cat);
         }
 
@@ -68,11 +64,8 @@ namespace API_proj.Controllers
                 .Include(c => c.Event)
                 .FirstOrDefaultAsync(c => c.CategoriesId == id);
 
-            if (cat == null)
-                return NotFound();
-
-            if (cat.Event!.UserId != CurrentUserId)
-                return Forbid();
+            if (cat == null) return NotFound();
+            if (cat.Event!.UserId != CurrentUserId) return Forbid();
 
             cat.CategoryName = dto.CategoryName;
             cat.Distance = dto.Distance;
@@ -82,7 +75,6 @@ namespace API_proj.Controllers
             cat.Fee = dto.Fee;
 
             await _db.SaveChangesAsync();
-
             return Ok(cat);
         }
     }

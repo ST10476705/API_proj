@@ -22,7 +22,8 @@ namespace API_proj.Controllers
         {
             var results = await _db.Results
                 .Include(r => r.Enrolment).ThenInclude(e => e!.User)
-                .Where(r => r.Enrolment!.EventId == eventId).ToListAsync();
+                .Where(r => r.Enrolment!.Category!.EventId == eventId)
+                .ToListAsync();
             return Ok(results);
         }
 
@@ -31,12 +32,17 @@ namespace API_proj.Controllers
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> Create([FromBody] Result result)
         {
-            var enrolment = await _db.Enrolments.Include(e => e.Event)
-                .FirstOrDefaultAsync(e => e.EnrolmentId == result.EnrolmentsId);
+            var enrolment = await _db.Enrolments
+                .Include(e => e.Category).ThenInclude(c => c!.Event)
+                .FirstOrDefaultAsync(e => e.EnrolmentId == result.EnrolmentId);
             if (enrolment == null) return NotFound();
-            if (enrolment.Event!.UserId != CurrentUserId) return Forbid();
+            if (enrolment.Category!.Event!.UserId != CurrentUserId) return Forbid();
 
-            result.Status = "Completed";
+            result.CategoryId = enrolment.CategoryId;   // ✅ Ensure set
+            result.Status = "Pending";
+            result.CreatedAt = DateTime.Now;
+            result.UpdatedAt = DateTime.Now;
+
             _db.Results.Add(result);
             await _db.SaveChangesAsync();
             return StatusCode(201, result);
@@ -47,16 +53,19 @@ namespace API_proj.Controllers
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> Update(int id, [FromBody] Result dto)
         {
-            var r = await _db.Results.Include(x => x.Enrolment).ThenInclude(e => e!.Event)
+            var r = await _db.Results
+                .Include(x => x.Enrolment).ThenInclude(e => e!.Category).ThenInclude(c => c!.Event)
                 .FirstOrDefaultAsync(x => x.ResultsId == id);
             if (r == null) return NotFound();
-            if (r.Enrolment!.Event!.UserId != CurrentUserId) return Forbid();
+            if (r.Enrolment!.Category!.Event!.UserId != CurrentUserId) return Forbid();
 
+            r.CategoryId = r.Enrolment.CategoryId;   // ✅ FIX: keep it consistent
             r.FinishTime = dto.FinishTime;
             r.OverallRank = dto.OverallRank;
             r.CategoryRank = dto.CategoryRank;
             r.Notes = dto.Notes;
             r.Status = dto.Status;
+            r.UpdatedAt = DateTime.Now;
             await _db.SaveChangesAsync();
             return Ok(r);
         }
@@ -66,13 +75,16 @@ namespace API_proj.Controllers
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> Verify(int id)
         {
-            var r = await _db.Results.Include(x => x.Enrolment).ThenInclude(e => e!.Event)
+            var r = await _db.Results
+                .Include(x => x.Enrolment).ThenInclude(e => e!.Category).ThenInclude(c => c!.Event)
                 .FirstOrDefaultAsync(x => x.ResultsId == id);
             if (r == null) return NotFound();
-            if (r.Enrolment!.Event!.UserId != CurrentUserId) return Forbid();
+            if (r.Enrolment!.Category!.Event!.UserId != CurrentUserId) return Forbid();
 
-            r.IsVerified = true;
+            r.Status = "Verified";
+            r.VerifiedBy = CurrentUserId;
             r.VerifiedAt = DateTime.Now;
+            r.UpdatedAt = DateTime.Now;
             await _db.SaveChangesAsync();
             return Ok(r);
         }
@@ -82,10 +94,11 @@ namespace API_proj.Controllers
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> Delete(int id)
         {
-            var r = await _db.Results.Include(x => x.Enrolment).ThenInclude(e => e!.Event)
+            var r = await _db.Results
+                .Include(x => x.Enrolment).ThenInclude(e => e!.Category).ThenInclude(c => c!.Event)
                 .FirstOrDefaultAsync(x => x.ResultsId == id);
             if (r == null) return NotFound();
-            if (r.Enrolment!.Event!.UserId != CurrentUserId) return Forbid();
+            if (r.Enrolment!.Category!.Event!.UserId != CurrentUserId) return Forbid();
 
             _db.Results.Remove(r);
             await _db.SaveChangesAsync();

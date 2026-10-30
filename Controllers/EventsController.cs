@@ -12,7 +12,6 @@ namespace API_proj.Controllers
     public class EventsController : ControllerBase
     {
         private readonly RaceDayDbContext _db;
-
         public EventsController(RaceDayDbContext db) => _db = db;
 
         private int CurrentUserId =>
@@ -24,7 +23,7 @@ namespace API_proj.Controllers
         // POST: api/events
         [HttpPost("events")]
         [Authorize]
-        public async Task<IActionResult> Create([FromBody] API_proj.Models.Event dto)
+        public async Task<IActionResult> Create([FromBody] Event dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
@@ -35,7 +34,7 @@ namespace API_proj.Controllers
             if (!AllowedStatuses.Contains(status))
                 return BadRequest(new { error = $"Status must be one of: {string.Join(", ", AllowedStatuses)}" });
 
-            var entity = new API_proj.Models.Event
+            var entity = new Event
             {
                 EventName = dto.EventName,
                 EventDate = dto.EventDate,
@@ -64,7 +63,6 @@ namespace API_proj.Controllers
             var events = await _db.Events
                 .Include(e => e.Categories)
                 .ToListAsync();
-
             return Ok(events);
         }
 
@@ -73,6 +71,7 @@ namespace API_proj.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetById(int id)
         {
+            // DB PK is EVENTSDID
             var ev = await _db.Events
                 .Include(e => e.Categories)
                 .FirstOrDefaultAsync(e => e.EventId == id);
@@ -83,7 +82,7 @@ namespace API_proj.Controllers
         // PUT: api/events/5
         [HttpPut("events/{id:int}")]
         [Authorize]
-        public async Task<IActionResult> Update(int id, [FromBody] API_proj.Models.Event dto)
+        public async Task<IActionResult> Update(int id, [FromBody] Event dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
