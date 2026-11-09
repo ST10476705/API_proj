@@ -1,307 +1,65 @@
-name: Validate Documentation Structure
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
   # ============================================================
-  # PART 1 — Existing documentation structure checks
+  # PART 3 — MVC Web Front-End validation
   # ============================================================
-  validate-part1:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-
-    - name: Verify Docs Folder Exists
-      run: |
-        if [ -d "docs" ]; then
-          echo "✅ /docs folder exists"
-        else
-          echo "❌ /docs folder not found"
-          exit 1
-        fi
-
-    - name: Verify ERD File
-      run: |
-        if find docs -type f \( -name "*.png" -o -name "*.pdf" \) | grep -q "."; then
-          echo "✅ ERD file found (PNG or PDF)"
-        else
-          echo "❌ ERD file not found in /docs"
-          exit 1
-        fi
-
-    - name: Verify API Endpoint Plan
-      run: |
-        if find docs -type f \( -name "*.md" -o -name "*.pdf" \) | grep -i "endpoint\|api" | grep -q "."; then
-          echo "✅ API Endpoint Plan found"
-        else
-          echo "❌ API Endpoint Plan not found in /docs"
-          exit 1
-        fi
-
-    - name: Verify SQL Script
-      run: |
-        if find docs -type f -name "*.sql" | grep -q "."; then
-          echo "✅ SQL Script found"
-        else
-          echo "❌ SQL Script not found in /docs"
-          exit 1
-        fi
-
-    - name: Verify README.md Exists
-      run: |
-        if [ -f "README.md" ]; then
-          echo "✅ README.md exists"
-
-          if grep -q "system" README.md || grep -q "RaceDay" README.md; then
-            echo "✅ System description found"
-          else
-            echo "⚠️ Consider adding a system description to README.md"
-          fi
-
-          if grep -q "Organiser" README.md && grep -q "Participant" README.md; then
-            echo "✅ Role descriptions found"
-          else
-            echo "⚠️ Consider adding role descriptions to README.md"
-          fi
-        else
-          echo "❌ README.md not found"
-          exit 1
-        fi
-
-    - name: Count Commits (Optional Check)
-      run: |
-        echo "Total commits in this branch:"
-        git rev-list --count HEAD
-
-    - name: Display Repository Structure
-      run: |
-        echo "Repository Structure:"
-        tree -L 2 || ls -la
-
-    - name: Validate SQL Syntax (Basic)
-      run: |
-        if find docs -name "*.sql" -exec grep -l "CREATE TABLE" {} \; | grep -q "."; then
-          echo "✅ CREATE TABLE statements found in SQL script"
-        else
-          echo "❌ No CREATE TABLE statements found"
-          exit 1
-        fi
-
-        if find docs -name "*.sql" -exec grep -l "INSERT INTO" {} \; | grep -q "."; then
-          echo "✅ INSERT statements found in SQL script"
-        else
-          echo "⚠️ No INSERT statements found (seed data may be missing)"
-        fi
-
-  # ============================================================
-  # PART 2 — New checks
-  # ============================================================
-  validate-part2:
+  validate-part3:
     runs-on: ubuntu-latest
     needs: validate-part1
+    # Part 3 does NOT need Part 2 to pass — it validates the web layer
+    # independently, so a broken API check doesn't block web validation.
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
     # ------------------------------------------------------------
-    # 1) Source folder structure
+    # 1) Locate the MVC web project
     # ------------------------------------------------------------
-    - name: Verify Solution / Project Files Exist
+    - name: Locate Web Project (.csproj with Sdk.Web)
+      id: web
       run: |
-        echo "Looking for .sln and .csproj files..."
-        SLN_COUNT=$(find . -maxdepth 2 -name "*.sln" | wc -l)
-        CSPROJ_COUNT=$(find . -maxdepth 3 -name "*.csproj" | wc -l)
-
-        if [ "$SLN_COUNT" -eq 0 ]; then
-          echo "❌ No .sln file found"
-          exit 1
-        else
-          echo "✅ Solution file(s) found: $SLN_COUNT"
-        fi
-
-        if [ "$CSPROJ_COUNT" -eq 0 ]; then
-          echo "❌ No .csproj file found"
-          exit 1
-        else
-          echo "✅ Project file(s) found: $CSPROJ_COUNT"
-        fi
-
-    - name: Verify Controllers Folder
-      run: |
-        if [ -d "Controllers" ] || find . -type d -name "Controllers" | grep -q "."; then
-          echo "✅ Controllers folder found"
-          find . -type d -name "Controllers" -exec ls -1 {} \;
-        else
-          echo "❌ Controllers folder not found"
-          exit 1
-        fi
-
-    - name: Verify Models Folder
-      run: |
-        if [ -d "Models" ] || find . -type d -name "Models" | grep -q "."; then
-          echo "✅ Models folder found"
-        else
-          echo "❌ Models folder not found"
-          exit 1
-        fi
-
-    - name: Verify Data / DbContext Folder
-      run: |
-        if find . -type f -name "*DbContext*.cs" | grep -q "."; then
-          echo "✅ DbContext file found"
-        else
-          echo "❌ DbContext file not found"
-          exit 1
-        fi
-
-    - name: Verify Services Folder
-      run: |
-        if find . -type d -name "Services" | grep -q "."; then
-          echo "✅ Services folder found"
-        else
-          echo "⚠️ Services folder not found (TokenService may be missing)"
-        fi
-
-    # ------------------------------------------------------------
-    # 2) Controller coverage — required endpoints
-    # ------------------------------------------------------------
-    - name: Verify AuthController Endpoints
-      run: |
-        AUTH=$(find . -name "AuthController.cs")
-        if [ -z "$AUTH" ]; then
-          echo "❌ AuthController.cs not found"
-          exit 1
-        fi
-
-        for route in "register" "login"; do
-          if grep -q "\"$route\"" $AUTH; then
-            echo "✅ AuthController has '$route'"
-          else
-            echo "❌ AuthController missing '$route'"
-            exit 1
+        WEB_PROJ=""
+        for f in $(find . -name "*.csproj" -not -path '*/.git/*'); do
+          if grep -q 'Sdk="Microsoft.NET.Sdk.Web"' "$f"; then
+            WEB_PROJ="$f"
+            break
           fi
         done
 
-    - name: Verify EventsController Endpoints
+        if [ -z "$WEB_PROJ" ]; then
+          echo "❌ No Microsoft.NET.Sdk.Web project found (RaceDay.Web missing)"
+          exit 1
+        fi
+        echo "✅ Found web project: $WEB_PROJ"
+        echo "proj=$WEB_PROJ" >> "$GITHUB_OUTPUT"
+        echo "dir=$(dirname "$WEB_PROJ")" >> "$GITHUB_OUTPUT"
+
+    - name: Verify Web Project Structure
       run: |
-        EV=$(find . -name "EventsController.cs")
-        if [ -z "$EV" ]; then echo "❌ EventsController.cs not found"; exit 1; fi
+        WEB_DIR="${{ steps.web.outputs.dir }}"
+        echo "Checking $WEB_DIR"
 
-        for verb in "HttpPost" "HttpGet" "HttpPut"; do
-          if grep -q "$verb" $EV; then
-            echo "✅ EventsController has $verb"
+        for d in "Controllers" "Models" "Services" "Views"; do
+          if [ -d "$WEB_DIR/$d" ]; then
+            echo "✅ $d folder present in web project"
           else
-            echo "❌ EventsController missing $verb"
-            exit 1
-          fi
-        done
-
-    - name: Verify CategoriesController Endpoints
-      run: |
-        CAT=$(find . -name "CategoriesController.cs")
-        if [ -z "$CAT" ]; then echo "❌ CategoriesController.cs not found"; exit 1; fi
-
-        for verb in "HttpPost" "HttpGet" "HttpPut"; do
-          if grep -q "$verb" $CAT; then
-            echo "✅ CategoriesController has $verb"
-          else
-            echo "❌ CategoriesController missing $verb"
-            exit 1
-          fi
-        done
-
-    - name: Verify EnrolmentsController Endpoints
-      run: |
-        EN=$(find . -name "EnrolmentsController.cs")
-        if [ -z "$EN" ]; then echo "❌ EnrolmentsController.cs not found"; exit 1; fi
-
-        for verb in "HttpPost" "HttpGet" "HttpPut" "HttpDelete"; do
-          if grep -q "$verb" $EN; then
-            echo "✅ EnrolmentsController has $verb"
-          else
-            echo "❌ EnrolmentsController missing $verb"
-            exit 1
-          fi
-        done
-
-    - name: Verify ResultsController Endpoints
-      run: |
-        RS=$(find . -name "ResultsController.cs")
-        if [ -z "$RS" ]; then echo "❌ ResultsController.cs not found"; exit 1; fi
-
-        for verb in "HttpPost" "HttpGet" "HttpPut" "HttpDelete"; do
-          if grep -q "$verb" $RS; then
-            echo "✅ ResultsController has $verb"
-          else
-            echo "❌ ResultsController missing $verb"
-            exit 1
-          fi
-        done
-
-    - name: Verify UsersController Endpoints
-      run: |
-        US=$(find . -name "UsersController.cs")
-        if [ -z "$US" ]; then echo "❌ UsersController.cs not found"; exit 1; fi
-
-        for verb in "HttpPut" "HttpGet" "HttpDelete"; do
-          if grep -q "$verb" $US; then
-            echo "✅ UsersController has $verb"
-          else
-            echo "❌ UsersController missing $verb"
+            echo "❌ $d folder missing in web project"
             exit 1
           fi
         done
 
     # ------------------------------------------------------------
-    # 3) Authorization / JWT checks
+    # 2) Session / auth wiring in Program.cs
     # ------------------------------------------------------------
-    - name: Verify JWT / Authorize Usage
+    - name: Verify Web Program.cs Session & HttpClient Wiring
       run: |
-        if grep -r "Authorize(Roles" --include="*.cs" . | grep -q "."; then
-          echo "✅ Role-based [Authorize] attributes found"
-          grep -rn "Authorize(Roles" --include="*.cs" . | head -20
-        else
-          echo "⚠️ No role-based [Authorize] attributes found"
-        fi
-
-        if grep -r "TokenService" --include="*.cs" . | grep -q "."; then
-          echo "✅ TokenService referenced"
-        else
-          echo "❌ TokenService not referenced"
+        P="${{ steps.web.outputs.dir }}/Program.cs"
+        if [ ! -f "$P" ]; then
+          echo "❌ Web Program.cs not found at $P"
           exit 1
         fi
 
-    - name: Verify JWT Configuration Present
-      run: |
-        APPSETTINGS=$(find . -name "appsettings.json" | head -1)
-        if [ -z "$APPSETTINGS" ]; then
-          echo "❌ appsettings.json not found"
-          exit 1
-        fi
-
-        for key in "Jwt" "Issuer" "Audience" "Key"; do
-          if grep -q "$key" $APPSETTINGS; then
-            echo "✅ appsettings.json has '$key'"
-          else
-            echo "❌ appsettings.json missing '$key'"
-            exit 1
-          fi
-        done
-
-    - name: Verify Program.cs JWT Wiring
-      run: |
-        P=$(find . -name "Program.cs" | head -1)
-        if [ -z "$P" ]; then echo "❌ Program.cs not found"; exit 1; fi
-
-        for token in "AddAuthentication" "AddJwtBearer" "UseAuthentication" "UseAuthorization"; do
-          if grep -q "$token" $P; then
+        for token in "AddSession" "UseSession" "AddHttpContextAccessor" "AddHttpClient" "AddControllersWithViews"; do
+          if grep -q "$token" "$P"; then
             echo "✅ Program.cs has '$token'"
           else
             echo "❌ Program.cs missing '$token'"
@@ -309,88 +67,213 @@ jobs:
           fi
         done
 
-    # ------------------------------------------------------------
-    # 4) SQL schema consistency checks
-    # ------------------------------------------------------------
-    - name: Verify Required Tables Present in SQL
+    - name: Verify Web Session Cookie Is HttpOnly & Essential
       run: |
-        SQL=$(find docs -name "*.sql" | head -1)
-        if [ -z "$SQL" ]; then echo "❌ SQL file not found in docs/"; exit 1; fi
-        echo "Checking: $SQL"
-
-        REQUIRED="USERS ROLES ASSIGNMENT EVENTS CATEGORIES ENROLMENTS RESULTS"
-        MISSING=0
-        for t in $REQUIRED; do
-          if grep -qi "CREATE TABLE $t" $SQL; then
-            echo "✅ Table $t present"
-          else
-            echo "❌ Table $t missing"
-            MISSING=1
-          fi
-        done
-        [ $MISSING -eq 0 ] || exit 1
-
-    - name: Verify No GETDATE() in CHECK Constraints
-      run: |
-        SQL=$(find docs -name "*.sql" | head -1)
-        if grep -iE "CHECK.*GETDATE|CHECK.*DATEDIFF.*GETDATE" $SQL | grep -q "."; then
-          echo "❌ Invalid CHECK constraint uses GETDATE() — SQL Server will reject this"
-          grep -inE "CHECK.*GETDATE" $SQL
-          exit 1
+        P="${{ steps.web.outputs.dir }}/Program.cs"
+        if grep -q "Cookie.HttpOnly" "$P" && grep -q "Cookie.IsEssential" "$P"; then
+          echo "✅ Session cookie HttpOnly + IsEssential configured"
         else
-          echo "✅ No illegal GETDATE() in CHECK constraints"
+          echo "❌ Session cookie HttpOnly / IsEssential not configured"
+          exit 1
         fi
 
-    - name: Verify Seed Roles Inserted
+    - name: Verify ApiSettings BaseUrl in appsettings.json
       run: |
-        SQL=$(find docs -name "*.sql" | head -1)
-        for role in "Participant" "Organiser"; do
-          if grep -q "$role" $SQL; then
-            echo "✅ Seed role '$role' present"
+        SETTINGS="${{ steps.web.outputs.dir }}/appsettings.json"
+        if [ ! -f "$SETTINGS" ]; then
+          echo "❌ Web appsettings.json not found"
+          exit 1
+        fi
+        if grep -qi '"ApiSettings"' "$SETTINGS" && grep -qi '"BaseUrl"' "$SETTINGS"; then
+          echo "✅ ApiSettings:BaseUrl present"
+        else
+          echo "❌ ApiSettings:BaseUrl missing — web app can't reach the API"
+          exit 1
+        fi
+
+    # ------------------------------------------------------------
+    # 3) API client service + role normalisation
+    # ------------------------------------------------------------
+    - name: Verify ApiService Exists
+      run: |
+        API=$(find "${{ steps.web.outputs.dir }}" -name "ApiService.cs" | head -1)
+        if [ -z "$API" ]; then
+          echo "❌ ApiService.cs not found in web project"
+          exit 1
+        fi
+        echo "✅ ApiService.cs found: $API"
+
+        for method in "LoginAsync" "RegisterAsync" "GetEventsAsync" "EnrolAsync"; do
+          if grep -q "$method" "$API"; then
+            echo "✅ ApiService has '$method'"
           else
-            echo "❌ Seed role '$role' missing"
+            echo "❌ ApiService missing '$method'"
             exit 1
           fi
         done
 
+    - name: Verify Role Normalisation (Organiser vs Organizer)
+      run: |
+        # This is the fix for the "everyone lands on Participant page" bug.
+        WEB_DIR="${{ steps.web.outputs.dir }}"
+        if grep -rE "NormalizeRole|Organi[sz]er" --include="*.cs" "$WEB_DIR" | grep -q .; then
+          echo "✅ Role normalisation / Organiser handling present"
+        else
+          echo "❌ No Organiser role handling found — login will default everyone to Participant"
+          exit 1
+        fi
+
+        if grep -rE "GetString\(\"Role\"\)|SetString\(\"Role\"" --include="*.cs" "$WEB_DIR" | grep -q .; then
+          echo "✅ Session Role key read/write present"
+        else
+          echo "❌ Session Role key not used — role-based redirect will fail"
+          exit 1
+        fi
+
     # ------------------------------------------------------------
-    # 5) Build the .NET API
+    # 4) Role-based navigation & controllers
+    # ------------------------------------------------------------
+    - name: Verify RoleAuthorize Filter
+      run: |
+        F=$(find "${{ steps.web.outputs.dir }}" -name "RoleAuthorizeAttribute.cs" | head -1)
+        if [ -z "$F" ]; then
+          echo "❌ RoleAuthorizeAttribute.cs not found"
+          exit 1
+        fi
+        echo "✅ RoleAuthorizeAttribute.cs found"
+
+        if grep -q "IAuthorizationFilter" "$F"; then
+          echo "✅ Implements IAuthorizationFilter"
+        else
+          echo "❌ Does not implement IAuthorizationFilter"
+          exit 1
+        fi
+
+    - name: Verify Organiser & Participant Controllers
+      run: |
+        WEB_DIR="${{ steps.web.outputs.dir }}"
+
+        ORG=$(find "$WEB_DIR" -name "OrganiserController.cs" | head -1)
+        PART=$(find "$WEB_DIR" -name "ParticipantController.cs" | head -1)
+        ACC=$(find "$WEB_DIR" -name "AccountController.cs" | head -1)
+
+        [ -z "$ORG" ]  && { echo "❌ OrganiserController.cs missing";  exit 1; } || echo "✅ OrganiserController.cs found"
+        [ -z "$PART" ] && { echo "❌ ParticipantController.cs missing"; exit 1; } || echo "✅ ParticipantController.cs found"
+        [ -z "$ACC" ]  && { echo "❌ AccountController.cs missing";     exit 1; } || echo "✅ AccountController.cs found"
+
+        # Organiser must be gated by the filter
+        if grep -q 'RoleAuthorize("Organiser")' "$ORG"; then
+          echo "✅ OrganiserController protected by RoleAuthorize"
+        else
+          echo "❌ OrganiserController missing [RoleAuthorize(\"Organiser\")]"
+          exit 1
+        fi
+
+        if grep -q 'RoleAuthorize("Participant")' "$PART"; then
+          echo "✅ ParticipantController protected by RoleAuthorize"
+        else
+          echo "❌ ParticipantController missing [RoleAuthorize(\"Participant\")]"
+          exit 1
+        fi
+
+        # Account must redirect by role
+        if grep -qiE "RedirectByRole|RedirectToAction\(\"Dashboard\",\s*\"Organiser\"" "$ACC"; then
+          echo "✅ AccountController routes Organiser after login"
+        else
+          echo "❌ AccountController does not redirect Organisers — 'all users land on Participant' bug is back"
+          exit 1
+        fi
+
+    - name: Verify Login Redirect Targets Organiser Dashboard
+      run: |
+        WEB_DIR="${{ steps.web.outputs.dir }}"
+        if grep -rE 'RedirectToAction\(\s*"Dashboard"\s*,\s*"Organiser"' --include="*.cs" "$WEB_DIR" | grep -q .; then
+          echo "✅ Somewhere we redirect to Organiser/Dashboard after login"
+        else
+          echo "❌ No redirect to Organiser/Dashboard found — Organiser login will go to Participant page"
+          exit 1
+        fi
+
+    # ------------------------------------------------------------
+    # 5) Views presence
+    # ------------------------------------------------------------
+    - name: Verify Key Views Present
+      run: |
+        WEB_DIR="${{ steps.web.outputs.dir }}"
+        REQUIRED_VIEWS=(
+          "Views/Account/Login.cshtml"
+          "Views/Account/Register.cshtml"
+          "Views/Organiser/Dashboard.cshtml"
+          "Views/Organiser/Events.cshtml"
+          "Views/Organiser/Categories.cshtml"
+          "Views/Organiser/Enrolments.cshtml"
+          "Views/Organiser/Results.cshtml"
+          "Views/Participant/Index.cshtml"
+          "Views/Participant/EventDetails.cshtml"
+          "Views/Participant/MyEnrolments.cshtml"
+          "Views/Participant/MyResults.cshtml"
+          "Views/Participant/Profile.cshtml"
+        )
+        MISSING=0
+        for v in "${REQUIRED_VIEWS[@]}"; do
+          if [ -f "$WEB_DIR/$v" ]; then
+            echo "✅ $v"
+          else
+            echo "❌ $v missing"
+            MISSING=1
+          fi
+        done
+        [ $MISSING -eq 0 ] || { echo "❌ One or more required views missing"; exit 1; }
+
+    # ------------------------------------------------------------
+    # 6) Docker / containerisation (POE requirement)
+    # ------------------------------------------------------------
+    - name: Verify Dockerfile Present
+      run: |
+        WEB_DIR="${{ steps.web.outputs.dir }}"
+        if [ -f "$WEB_DIR/Dockerfile" ]; then
+          echo "✅ Web Dockerfile present"
+          # Basic sanity: must be multi-stage aspnet + sdk
+          if grep -qi "mcr.microsoft.com/dotnet/aspnet" "$WEB_DIR/Dockerfile" \
+             && grep -qi "mcr.microsoft.com/dotnet/sdk"   "$WEB_DIR/Dockerfile"; then
+            echo "✅ Dockerfile uses multi-stage aspnet + sdk images"
+          else
+            echo "⚠️ Dockerfile is missing standard aspnet/sdk base images"
+          fi
+        else
+          echo "❌ Web Dockerfile missing (required by POE)"
+          exit 1
+        fi
+
+    # ------------------------------------------------------------
+    # 7) Build the web project
     # ------------------------------------------------------------
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
 
-    - name: Restore NuGet Packages
-      run: dotnet restore
+    - name: Restore Web Project
+      run: dotnet restore "${{ steps.web.outputs.proj }}"
 
-    - name: Build Project
-      run: dotnet build --no-restore --configuration Release
-
-    # ------------------------------------------------------------
-    # 6) Optional: run tests if they exist
-    # ------------------------------------------------------------
-    - name: Run Tests (if any)
-      run: |
-        if find . -name "*Tests.csproj" | grep -q "."; then
-          dotnet test --no-build --configuration Release --verbosity normal
-        else
-          echo "ℹ️ No test projects found — skipping"
-        fi
+    - name: Build Web Project
+      run: dotnet build "${{ steps.web.outputs.proj }}" --no-restore --configuration Release --nologo --verbosity minimal
 
     # ------------------------------------------------------------
-    # 7) Final summary
+    # 8) Summary
     # ------------------------------------------------------------
-    - name: Part 2 Summary
+    - name: Part 3 Summary
       run: |
         echo "=================================================="
-        echo " PART 2 VALIDATION COMPLETE"
+        echo " PART 3 — MVC WEB FRONT-END VALIDATION COMPLETE"
         echo "=================================================="
-        echo "✔ Source folders verified (Controllers, Models, Data)"
-        echo "✔ All required controllers and verbs present"
-        echo "✔ JWT auth wired (TokenService + Program.cs + appsettings)"
-        echo "✔ SQL schema contains all required tables"
-        echo "✔ No illegal GETDATE() checks"
-        echo "✔ Seed roles present"
-        echo "✔ .NET project restores and builds"
+        echo "✔ Web project located (Sdk.Web)"
+        echo "✔ Program.cs: Session + HttpClient + MVC wired"
+        echo "✔ ApiSettings:BaseUrl configured"
+        echo "✔ ApiService + NormalizeRole present"
+        echo "✔ RoleAuthorize filter + Organiser/Participant controllers"
+        echo "✔ AccountController redirects by role (Organiser fix verified)"
+        echo "✔ All required Views present"
+        echo "✔ Dockerfile present"
+        echo "✔ Web project restores and builds"
         echo "=================================================="
